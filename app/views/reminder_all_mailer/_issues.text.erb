@@ -1,6 +1,6 @@
 <% if issues.any? %>
   <%= message %>
   <% issues.each do |issue| -%>
-    * <%= issue.due_date %> - <%= "#{issue.project} - #{issue.tracker} ##{issue.id}: #{issue.subject}" %>
+    * <%= issue.due_date %> - <%= issue.assigned_to.nil?? 'Unassigned': issue.assigned_to.login %> - <%= "#{issue.project} - #{issue.tracker} #{issue.id}: #{issue.subject}" %>
   <% end -%>
 <% end %>
