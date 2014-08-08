@@ -13,6 +13,8 @@ you can do so by changing into your plugin directory and issuing a command like
 
         git clone https://github.com/Undev/redmine_reminder
 
+2. Change the project_id in redmine_reminder/lib/redmine_reminder/collecter.rb accordinng to the project you would like to use the plugin with
+
 2. Run the following command to upgrade your database (make a db backup before).
 
         bundle exec rake redmine:plugins:migrate RAILS_ENV=production
@@ -26,10 +28,6 @@ You can also follow plugin installation procedure at http://www.redmine.org/wiki
 The plugin runs as a rake task so you have to set it up in cron or task sheduler
 
 1 0 * * *       root    cd /opt/redmine && rake redmine:send_reminders_all RAILS_ENV=production
-
-You can setup options in administration menu.
-
-![Reminder options in administration menu](https://raw.github.com/Undev/redmine_reminder/master/screenshot.png)
 
 ## Compatibility
 

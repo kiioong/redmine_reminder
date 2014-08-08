@@ -1,0 +1,5 @@
+<%= render :partial => "issues", :locals => {
+    :issues => @assigned_issues,
+    :message => l_mail_body_reminder_inactive(@assigned_issues.size, @days) } %>
+
+<p><%= link_to l(:label_issue_view_all), @issues_url %></p>

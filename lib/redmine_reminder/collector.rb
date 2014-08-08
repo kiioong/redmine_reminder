@@ -1,102 +1,55 @@
 class RedmineReminder::Collector
-  attr_reader :options
 
-  def initialize(options)
-    @options = options
-  end
+	
 
-  def collect_reminders
+  def collect_reminders(days)
     reminders = {}
-
-    issues = issues_due_in_days
+	project_id = 0 # 0 to look in all projects
+	
+	unless days == "inactive"
+		issues = issues_resolved_days_ago(days,project_id)
+	else
+		issues = issues_inactive(project_id)
+	end
+    
     issues.each do |issue|
 
-      if options.send_to_author?
-        reminders[issue.author] ||=
-            RedmineReminder::Reminder.new(issue.author)
-        reminders[issue.author][:author] << issue
-      end
-
-      if options.send_to_assigned_to? && issue.assigned_to
+      if issue.assigned_to
         reminders[issue.assigned_to] ||=
             RedmineReminder::Reminder.new(issue.assigned_to)
         reminders[issue.assigned_to][:assigned_to] << issue
       end
 
-      if options.send_to_watcher?
-        issue.watchers.each do |watcher|
-          reminders[watcher.user] ||=
-              RedmineReminder::Reminder.new(watcher.user)
-          reminders[watcher.user][:watcher] << issue
-        end
-      end
-
-      if options.send_to_custom_user?
-        issue_custom_users(issue).each do |custom_user|
-          reminders[custom_user] ||=
-              RedmineReminder::Reminder.new(custom_user)
-          reminders[custom_user][:custom_user] << issue
-        end
-      end
     end
+ 
     reminders.values.map &:uniq!
     reminders.values || []
   end
 
   private
 
-  # Get issues due in X days
-  def issues_due_in_days
-    due_date = options.days.day.from_now.to_date
-    s = ARCondition.new ["#{Issue.table_name}.due_date <= ?", due_date]
-    s << issue_statuses
-    s << projects
-    s << trackers
-    Issue.find(:all, :include => [:status, :assigned_to, :author, :project, :watchers, :tracker],
-               :conditions => s.conditions,
-               :order => "#{Issue.table_name}.due_date, #{Project.table_name}.name")
+  # Get issues that where resolved X days ago (exact)
+  def issues_resolved_days_ago(days,project_id)
+	if project_id == 0
+		Issue.includes(:status, :assigned_to, :author, :project,:tracker)
+					.where("status_id = 3 AND DATE(updated_on) = DATE_SUB(CURDATE(),INTERVAL ? DAY)",days)
+					.all
+	else
+		Issue.includes(:status, :assigned_to, :author, :project,:tracker)
+					.where("project_id = ? AND status_id = 3 AND DATE(updated_on) = DATE_SUB(CURDATE(),INTERVAL ? DAY)",project_id,days)
+					.all
+	end
   end
-
-  def issue_statuses
-    case options.issue_status_selector
-      when 'explicit'
-        ["#{IssueStatus.table_name}.id in (?)", options.issue_status_ids]
-      when 'all_opened'
-        ["#{IssueStatus.table_name}.is_closed = ?", false]
-      else
-        raise "unknown issue_status_selector value: #{options.issue_status_selector}"
-    end
+  
+  def issues_inactive(project_id)
+	if project_id == 0
+		Issue.includes(:assigned_to, :author, :project, :tracker)
+					.where("DATE(updated_on) < DATE_SUB(CURDATE(),INTERVAL 10 DAY) AND status_id <> 3 AND status_id <> 5")
+					.all
+	else
+		Issue.includes(:assigned_to, :author, :project, :tracker)
+					.where("project_id = ? AND DATE(updated_on) < DATE_SUB(CURDATE(),INTERVAL 10 DAY) AND status_id <> 3 AND status_id <> 5",project_id)
+					.all
+	end
   end
-
-  def projects
-    case options.project_selector
-      when 'explicit'
-        ["#{Project.table_name}.id in (?)", options.project_ids]
-      when 'all'
-        ["#{Project.table_name}.status = ?", Project::STATUS_ACTIVE]
-      else
-        raise "unknown project_selector value: #{options.project_selector}"
-    end
-  end
-
-  def trackers
-    case options.tracker_selector
-      when 'explicit'
-        ["#{Tracker.table_name}.id in (?)", options.tracker_ids]
-      when 'all'
-        "1=1"
-      else
-        raise "unknown tracker_selector value: #{options.tracker_selector}"
-    end
-  end
-
-  def issue_custom_users(issue)
-    custom_user_values = issue.custom_field_values.select do |v|
-      v.custom_field.field_format == "user"
-    end
-    custom_user_ids = custom_user_values.map(&:value).flatten
-    custom_user_ids.reject! { |id| id.blank? }
-    User.find(custom_user_ids)
-  end
-
 end
