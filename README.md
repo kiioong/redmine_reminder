@@ -13,7 +13,7 @@ you can do so by changing into your plugin directory and issuing a command like
 
         git clone https://github.com/Undev/redmine_reminder
 
-2. Change the project_id in redmine_reminder/lib/redmine_reminder/collecter.rb accordinng to the project you would like to use the plugin with
+2. Change the project_id in redmine_reminder/lib/redmine_reminder/collecter.rb according to the project you would like to use the plugin with
 
 2. Run the following command to upgrade your database (make a db backup before).
 
